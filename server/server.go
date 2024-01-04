@@ -1,74 +1,52 @@
 package main
 
-import( "fmt"
-	 "io"
-	 "net"
-	 "os"
+import (
+	"fmt"
+	"net"
+
 )
 
 func handleConnection(conn net.Conn) {
 	defer conn.Close()
 
-	// Create Buffer
 	buffer := make([]byte, 1024)
-
-	//receive filename from client
-	fileNameBuffer := make([]byte, 64)
-
-	n , err := conn.Read(fileNameBuffer)
+	n, err := conn.Read(buffer)
 	if err != nil {
-		fmt.Println(err)
+		fmt.Println("Error reading:", err)
 		return
 	}
 
-	fileName := string(fileNameBuffer[:n])
-	fmt.Println("Receive File Name", fileName)
+	clientData := string(buffer[:n])
 
-	//create file to store data
-	file, err := os.Create(fileName)
-	if err != nil{
-		fmt.Println(err)
-		return
-	}
-	defer file.Close() //Close file before exit
+	// ตรวจสอบข้อมูล
+	if clientData == fmt.Sprintf("%s:%s", "std1", "p@ssw0rd") {
 
-	// Receive and weire data to file
-	for {
-		n, err := conn.Read(buffer)
-		if err != nil {
-			if err == io.EOF{
-				fmt.Println("Transfer Complete")
-			} else {
-				fmt.Println(err)
-			}
-			return
-		}
-		//write data from buffer to file
-		file.Write(buffer[:n])
+		conn.Write([]byte("Hello\n"))
+	} else {
+
+		conn.Write([]byte("Invalid credentials\n"))
 	}
 }
 
 func main() {
-	//Create Listenner
-	listenner, err := net.Listen("tcp", ":5000")
+	listener, err := net.Listen("tcp", ":5000")
 	if err != nil {
-		fmt.Println(err)
+		fmt.Println("Error listening:", err)
 		return
 	}
-	defer listenner.Close() // Close listenner before exit
+	defer listener.Close()
+
 	fmt.Println("Server is listening on port 5000")
 
-	//Accept connection from client
-	for{
-		conn, err := listenner.Accept()
+	for {
+		conn, err := listener.Accept()
 		if err != nil {
-			fmt.Println(err)
+			fmt.Println("Error accepting connection:", err)
 			continue
 		}
-		// Print Client address
-		fmt.Println("Client Connected:", conn.RemoteAddr())
 
-		//Handle connection
+		fmt.Println("New connection established")
+
 		go handleConnection(conn)
 	}
 }
